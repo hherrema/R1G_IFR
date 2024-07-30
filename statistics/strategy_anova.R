@@ -111,7 +111,7 @@ if (!is.null(rti_tukey_s)) {
             row.names=FALSE)
 }
 
-# temporal clustering score
+# temporal clustering score (w/ H2-H1)
 tcl_data_bsa <- read.csv('dataframes/analyses/tcl_data_bsa.csv')
 tcl_res <- run_anova(tcl_data_bsa, 'tcl')
 tcl_anova <- tcl_res$res_anova
@@ -121,6 +121,18 @@ write.csv(tcl_anova, 'statistics/tcl_anova.csv')
 tcl_tukey_s <- post_hoc_pairwise(tcl_anova, tcl_model)
 if (!is.null(tcl_tukey_s)) {
   write.csv(as.data.frame(summary(tcl_tukey_s)), 'statistics/tcl_tukey_s.csv',
+            row.names=FALSE)
+}
+
+tcl_h_data_bsa <- read.csv('dataframes/analyses/tcl_h_data_bsa.csv')
+tcl_h_res <- run_anova(tcl_h_data_bsa, 'tcl_delta')
+tcl_h_anova <- tcl_h_res$res_anova
+tcl_h_model <- tcl_h_res$model
+write.csv(tcl_h_anova, 'statistics/tcl_h_anova.csv')
+
+tcl_h_tukey_s <- post_hoc_pairwise(tcl_h_anova, tcl_h_model)
+if (!is.null(tcl_h_tukey_s)) {
+  write.csv(as.data.frame(summary(tcl_h_tukey_s)), 'statistics/tcl_h_tukey_s.csv',
             row.names=FALSE)
 }
 
@@ -154,7 +166,7 @@ if (!is.null(lcrp_p1_tukey_s)) {
 lcrp_n1_res <- run_anova(lcrp_data_bsa, 'ln_1')
 lcrp_n1_anova <- lcrp_n1_res$res_anova
 lcrp_n1_model <- lcrp_n1_res$model
-write.csv(lcrp_n1_model, 'statistics/lcrp_n1_anova.csv')
+write.csv(lcrp_n1_anova, 'statistics/lcrp_n1_anova.csv')
 
 lcrp_n1_tukey_s <- post_hoc_pairwise(lcrp_n1_anova, lcrp_n1_model)
 if (!is.null(lcrp_n1_tukey_s)) {
