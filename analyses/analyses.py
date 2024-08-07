@@ -72,20 +72,12 @@ def spc_all(df, condition_map):
     return spc_data_all
 
 def spc_btwn_subj_avg_all(spc_data_all):
-    spc_data_bsa_all = []
-    for (sub, c, ll, pr), dat in tqdm(spc_data_all.groupby(['subject', 'condition', 'l_length', 'pres_rate'])):
-        sp_precall = dat.iloc[:,5:].mean(axis=0).to_numpy()
-        spc_data_bsa_all.append((sub, c, ll, pr,) + tuple(sp_precall))
-        
-    # store results in dataframe
-    cols = np.array(['subject', 'condition', 'l_length', 'pres_rate'] + [f'sp_{x}' for x in range(1, 41)])
-    spc_data_bsa_all = pd.DataFrame(spc_data_bsa_all, columns=cols)
+    spc_data_bsa_all = spc_data_all.groupby(['subject', 'condition', 'l_length', 'pres_rate'])[[f'sp_{x}' for x in range(1, 41)]].mean().reset_index()
     
     # sort by condition
     spc_data_bsa_all = sort_by_condition(spc_data_bsa_all)
     
     return spc_data_bsa_all
-
 
 # linear regression for primacy ad recency effects
 def prim_rec_lr(row):
@@ -155,18 +147,11 @@ def pfr_all(df, condition_map, toggle):
     return pfr_data_all
 
 def pfr_btwn_subj_avg_all(pfr_data_all):
-    pfr_data_bsa_all = []
-    for (sub, c, ll, pr), dat in tqdm(pfr_data_all.groupby(['subject', 'condition', 'l_length', 'pres_rate'])):
-        sp_pfr = dat.iloc[:,5:].mean(axis=0).to_numpy()
-        pfr_data_bsa_all.append((sub, c, ll, pr,) + tuple(sp_pfr))
-        
-    # store results in dataframe
-    cols = np.array(['subject', 'condition', 'l_length', 'pres_rate'] + [f'sp_{x}' for x in range(1, 41)])
-    pfr_data_bsa_all = pd.DataFrame(pfr_data_bsa_all, columns=cols)
+    pfr_data_bsa_all = pfr_data_all.groupby(['subject', 'condition', 'l_length', 'pres_rate'])[[f'sp_{x}' for x in range(1, 41)]].mean().reset_index()
     
     # sort by condition
     pfr_data_bsa_all = sort_by_condition(pfr_data_bsa_all)
-
+    
     return pfr_data_bsa_all
 
 
@@ -235,7 +220,8 @@ def pfr_spc_correlation(pfr_data_bsa_all, spc_data_bsa_all):
 
 
 # within session recall initiation variance
-def r1_variance_sess(data, ll, cond_pfr):
+def r1_variance_sess(data, ll, cond_pfr, seed):
+    np.random.seed(seed)          # set random seed
     r1_list = []                  # serial positions of first recall
     r1_permutation = []           # serial positions of random recalls
     rec_evs = data[data['type'] == 'REC_WORD']
@@ -258,14 +244,15 @@ def r1_variance_sess(data, ll, cond_pfr):
     
     return np.std(r1_list) / denom, np.std(r1_list_dec) / denom, np.std(r1_permutation) / denom, np.std(r1_permutation_dec) / denom
 
-
 def r1_variance(df, condition_map, pfr_data_only_cr_bsa_all):
     r1_var_data = []
+    seed = 0
     for (sub, sess, c, ll, pr), data in tqdm(df.groupby(['worker_id', 'session', 'condition', 'l_length', 'pres_rate'])):
+        seed += 1
         c_ = condition_map.get(c)                                                                          # condition string ("ll-pr")
         cond_data = pfr_data_only_cr_bsa_all.query("condition == @c_")
         cond_pfr = cond_data[[f'sp_{x}' for x in range(1, int(ll)+1)]].mean().to_numpy()                   # use PFR as pdf for permutation (only lists initiated with correct recall)
-        r1_sem, r1_dec_sem, r1_perm_sem, r1_dec_perm_sem = r1_variance_sess(data, int(ll), cond_pfr)
+        r1_sem, r1_dec_sem, r1_perm_sem, r1_dec_perm_sem = r1_variance_sess(data, int(ll), cond_pfr, seed)
         r1_var_data.append((sub, sess, c_, ll, pr, r1_sem, r1_dec_sem, r1_perm_sem, r1_dec_perm_sem))
         
     # store results in dataframe
@@ -275,18 +262,11 @@ def r1_variance(df, condition_map, pfr_data_only_cr_bsa_all):
     return r1_var_data
 
 def r1_variance_btwn_subj_avg(r1_var_data):
-    r1_var_data_bsa = []
-    for (sub, c, ll, pr), dat in tqdm(r1_var_data.groupby(['subject', 'condition', 'l_length', 'pres_rate'])):
-        r1_var_data_bsa.append((sub, c, ll, pr, np.mean(dat.sp_sem), np.mean(dat.dec_sem), 
-                                np.mean(dat.permutation_sp_sem), np.mean(dat.permutation_dec_sem)))
-        
-    # store results in dataframe
-    r1_var_data_bsa = pd.DataFrame(r1_var_data_bsa, columns=['subject', 'condition', 'l_length', 'pres_rate', 
-                                                             'sp_sem', 'dec_sem', 'permutation_sp_sem', 'permutation_dec_sem'])
+    r1_var_data_bsa = r1_var_data.groupby(['subject', 'condition', 'l_length', 'pres_rate'])[['sp_sem', 'dec_sem', 'permutation_sp_sem', 'permutation_dec_sem']].mean().reset_index()
     
     # sort by condition
     r1_var_data_bsa = sort_by_condition(r1_var_data_bsa)
-
+    
     return r1_var_data_bsa
 
 
@@ -391,18 +371,11 @@ def spc(df, condition_map):
     return spc_data
 
 def spc_btwn_subj_avg(spc_data):
-    spc_data_bsa = []
-    for (sub, strat, c, ll, pr), dat in tqdm(spc_data.groupby(['subject', 'strategy', 'condition', 'l_length', 'pres_rate'])):
-        sp_precall = dat.iloc[:,6:].mean(axis=0).to_numpy()
-        spc_data_bsa.append((sub, strat, c, ll, pr,) + tuple(sp_precall))
-        
-    # store results in dataframe
-    cols = np.array(['subject', 'strategy', 'condition', 'l_length', 'pres_rate'] + [f'sp_{x}' for x in range(1, 41)])
-    spc_data_bsa = pd.DataFrame(spc_data_bsa, columns=cols)
+    spc_data_bsa = spc_data.groupby(['subject', 'strategy', 'condition', 'l_length', 'pres_rate'])[[f'sp_{x}' for x in range(1, 41)]].mean().reset_index()
     
     # sort by condition
     spc_data_bsa = sort_by_condition(spc_data_bsa)
-
+    
     return spc_data_bsa
 
 
@@ -420,18 +393,11 @@ def pfr(df, condition_map, toggle):
     return pfr_data
 
 def pfr_btwn_subj_avg(pfr_data):
-    pfr_data_bsa = []
-    for (sub, strat, c, ll, pr), dat in tqdm(pfr_data.groupby(['subject', 'strategy', 'condition', 'l_length', 'pres_rate'])):
-        sp_pfr = dat.iloc[:,6:].mean(axis=0).to_numpy()
-        pfr_data_bsa.append((sub, strat, c, ll, pr,) + tuple(sp_pfr))
-        
-    # store results in dataframe
-    cols = np.array(['subject', 'strategy', 'condition', 'l_length', 'pres_rate'] + [f'sp_{x}' for x in range(1, 41)])
-    pfr_data_bsa = pd.DataFrame(pfr_data_bsa, columns=cols)
-
+    pfr_data_bsa = pfr_data.groupby(['subject', 'strategy', 'condition', 'l_length', 'pres_rate'])[[f'sp_{x}' for x in range(1, 41)]].mean().reset_index()
+    
     # sort by condition
     pfr_data_bsa = sort_by_condition(pfr_data_bsa)
-
+    
     return pfr_data_bsa
 
 
@@ -458,12 +424,7 @@ def mwr(df, condition_map):
     return mwr_data
 
 def mwr_btwn_subj_avg(mwr_data):
-    mwr_data_bsa = []
-    for (sub, strat, c, ll, pr), dat in tqdm(mwr_data.groupby(['subject', 'strategy', 'condition', 'l_length', 'pres_rate'])):
-        mwr_data_bsa.append((sub, strat, c, ll, pr, np.mean(dat.mwr)))
-        
-    # store results in dataframe
-    mwr_data_bsa = pd.DataFrame(mwr_data_bsa, columns=['subject', 'strategy', 'condition', 'l_length', 'pres_rate', 'mwr'])
+    mwr_data_bsa = mwr_data.groupby(['subject', 'strategy', 'condition', 'l_length', 'pres_rate'])['mwr'].mean().reset_index()
     
     # sort by condition
     mwr_data_bsa = sort_by_condition(mwr_data_bsa)
@@ -500,12 +461,7 @@ def r1_intrusion(df, condition_map):
     return r1_intr_data
 
 def r1_intr_btwn_subj_avg(r1_intr_data):
-    r1_intr_data_bsa = []
-    for (sub, strat, c, ll, pr), dat in tqdm(r1_intr_data.groupby(['subject', 'strategy', 'condition', 'l_length', 'pres_rate'])):
-        r1_intr_data_bsa.append((sub, strat, c, ll, pr, np.mean(dat.prop_wrong)))
-        
-    # store results in dataframe
-    r1_intr_data_bsa = pd.DataFrame(r1_intr_data_bsa, columns=['subject', 'strategy', 'condition', 'l_length', 'pres_rate', 'prop_wrong'])
+    r1_intr_data_bsa = r1_intr_data.groupby(['subject', 'strategy', 'condition', 'l_length', 'pres_rate'])['prop_wrong'].mean().reset_index()
     
     # sort by condition
     r1_intr_data_bsa = sort_by_condition(r1_intr_data_bsa)
@@ -551,14 +507,7 @@ def p2r_intr(df, condition_map):
     return p2r_intr_data
 
 def p2r_intr_btwn_subj_avg(p2r_intr_data):
-    p2r_intr_data_bsa = []
-    for (sub, strat, c, ll, pr), dat in tqdm(p2r_intr_data.groupby(['subject', 'strategy', 'condition', 'l_length', 'pres_rate'])):
-        sp_p2r = dat.iloc[:,6:].mean(axis=0).to_numpy()
-        p2r_intr_data_bsa.append((sub, strat, c, ll, pr,) + tuple(sp_p2r))
-        
-    # store results in dataframe
-    cols = np.array(['subject', 'strategy', 'condition', 'l_length', 'pres_rate', 'intrusion'] + [f'sp_{x}' for x in range(1, 41)])
-    p2r_intr_data_bsa = pd.DataFrame(p2r_intr_data_bsa, columns=cols)
+    p2r_intr_data_bsa = p2r_intr_data.groupby(['subject', 'strategy', 'condition', 'l_length', 'pres_rate'])[['intrusion'] + [f'sp_{x}' for x in range(1, 41)]].mean().reset_index()
     
     # sort by condition
     p2r_intr_data_bsa = sort_by_condition(p2r_intr_data_bsa)
@@ -635,12 +584,7 @@ def rt_init(df, condition_map, toggle):
     return rti_data
 
 def rti_btwn_subj_avg(rti_data):
-    rti_data_bsa = []
-    for (sub, strat, c, ll, pr), dat in tqdm(rti_data.groupby(['subject', 'strategy', 'condition', 'l_length', 'pres_rate'])):
-        rti_data_bsa.append((sub, strat, c, ll, pr, np.mean(dat.rt)))
-        
-    # store results in dataframe
-    rti_data_bsa = pd.DataFrame(rti_data_bsa, columns=['subject', 'strategy', 'condition', 'l_length', 'pres_rate', 'rt'])
+    rti_data_bsa = rti_data.groupby(['subject', 'strategy', 'condition', 'l_length', 'pres_rate'])['rt'].mean().reset_index()
     
     # sort by condition
     rti_data_bsa = sort_by_condition(rti_data_bsa)
@@ -699,17 +643,11 @@ def intrusion_rates(df, condition_map, toggle):
     return intr_data
 
 def intrusion_rates_btwn_subj_avg(intr_data):
-    intr_data_bsa = []
-    for (sub, strat, c, ll, pr), dat in tqdm(intr_data.groupby(['subject', 'strategy', 'condition', 'l_length', 'pres_rate'])):
-        intr_data_bsa.append((sub, strat, c, ll, pr, np.mean(dat.eli_rate), np.mean(dat.pli_rate)))
-        
-    # store results in dataframe
-    intr_data_bsa = pd.DataFrame(intr_data_bsa, columns=['subject', 'strategy', 'condition', 'l_length', 'pres_rate',
-                                                         'eli_rate', 'pli_rate'])
+    intr_data_bsa = intr_data.groupby(['subject', 'strategy', 'condition', 'l_length', 'pres_rate'])[['eli_rate', 'pli_rate']].mean().reset_index()
     
     # sort by condition
     intr_data_bsa = sort_by_condition(intr_data_bsa)
-
+    
     return intr_data_bsa
 
 
@@ -760,14 +698,7 @@ def irt(df, condition_map):
     return pd.concat(irt_data, ignore_index=True)
 
 def irt_btwn_subj_avg(irt_data):
-    irt_data_bsa = []
-    for (sub, strat, c, ll, pr, ncr), dat in tqdm(irt_data.groupby(['subject', 'strategy', 'condition', 'l_length', 'pres_rate', 'ncr'])):
-        tr_irt = dat.iloc[:,7:].mean(axis=0).to_numpy()
-        irt_data_bsa.append((sub, strat, c, ll, pr, ncr, ) + tuple(tr_irt))
-        
-    # store results in dataframe
-    irt_data_bsa = pd.DataFrame(irt_data_bsa, columns=['subject', 'strategy', 'condition', 'l_length', 'pres_rate', 
-                                                       'ncr'] + [f'tr_{x}' for x in range(1, len(irt_data.columns) - 6)])
+    irt_data_bsa = irt_data.groupby(['subject', 'strategy', 'condition', 'l_length', 'pres_rate', 'ncr'])[[f'tr_{x}' for x in range(1, len(irt_data.columns)-6)]].mean().reset_index()
     
     # sort by condition
     irt_data_bsa = sort_by_condition(irt_data_bsa)
@@ -823,14 +754,8 @@ def irt_final(df, condition_map, mwr_md):
 
     return irt_data
 
-def irt_final_btwn_subj_avg(irt_final_data, mwr_md):
-    irt_final_data_bsa = []
-    for (sub, strat, c, ll, pr), dat in tqdm(irt_final_data.groupby(['subject', 'strategy', 'condition', 'l_length', 'pres_rate'])):
-        rot_irt = dat.iloc[:,6:].mean(axis=0).to_numpy()
-        irt_final_data_bsa.append((sub, strat, c, ll, pr,) + tuple(rot_irt))
-        
-    # store results in dataframe
-    irt_final_data_bsa = pd.DataFrame(irt_final_data_bsa, columns=['subject', 'strategy', 'condition', 'l_length', 'pres_rate'] + [f'rot_{x}' for x in np.arange(max(mwr_md.lb)-1, -1, -1)])
+def irt_final_btwn_subj_avg(irt_final_data):
+    irt_final_data_bsa = irt_final_data.groupby(['subject', 'strategy', 'condition', 'l_length', 'pres_rate'])[[f'rot_{x}' for x in range(7, -1, -1)]].mean().reset_index()
     
     # sort by condition
     irt_final_data_bsa = sort_by_condition(irt_final_data_bsa)
@@ -889,14 +814,7 @@ def irt_tot(df, condition_map):
     return pd.concat(irt_tot_data, ignore_index=True)
 
 def irt_tot_btwn_subj_avg(irt_tot_data):
-    irt_tot_data_bsa = []
-    for (sub, strat, c, ll, pr, ncr), dat in tqdm(irt_tot_data.groupby(['subject', 'strategy', 'condition', 'l_length', 'pres_rate', 'ncr'])):
-        irt_tot_data_bsa.append((sub, strat, c, ll, pr, ncr, np.mean(dat.total_irt), 
-                                 np.mean(dat.irt_h1), np.mean(dat.irt_h2), np.mean(dat.irt_delta)))
-
-    # store results in dataframe
-    irt_tot_data_bsa = pd.DataFrame(irt_tot_data_bsa, columns=['subject', 'strategy', 'condition', 'l_length', 'pres_rate', 'ncr', 
-                                                               'total_irt', 'irt_h1', 'irt_h2', 'irt_delta'])
+    irt_tot_data_bsa = irt_tot_data.groupby(['subject', 'strategy', 'condition', 'l_length', 'pres_rate', 'ncr'])[['total_irt', 'irt_h1', 'irt_h2', 'irt_delta']].mean().reset_index()
     
     # ncr bins = middle correct recall
     irt_tot_data_bsa['ncr_bin'] = irt_tot_data_bsa['ncr'] // 2
@@ -984,19 +902,13 @@ def tcl(df, condition_map, buffer):
     return tcl_data
 
 def tcl_btwn_subj_avg(tcl_data):
-    tcl_data_bsa = []
-    for (sub, strat, c, ll, pr), dat in tqdm(tcl_data.groupby(['subject', 'strategy', 'condition', 'l_length', 'pres_rate'])):
-        tcl_data_bsa.append((sub, strat, c, ll, pr, np.mean(dat.tcl)))
-        
-    # store results in dataframe
-    tcl_data_bsa = pd.DataFrame(tcl_data_bsa, columns=['subject', 'strategy', 'condition', 'l_length', 'pres_rate', 'tcl'])
-    
+    tcl_data_bsa = tcl_data.groupby(['subject', 'strategy', 'condition', 'l_length', 'pres_rate'])['tcl'].mean().reset_index()
+
     # sort by condition
     tcl_data_bsa = sort_by_condition(tcl_data_bsa)
 
     return tcl_data_bsa
 
-# conditioned on half of recall
 # conditioned on half of recall
 def tcl_h_sess(data, ll):
     tcl_h1 = []; tcl_h2 = []; tcl_delta = []                     # temporal clustering scores for each list
@@ -1068,12 +980,7 @@ def tcl_h(df, condition_map):
     return tcl_h_data
 
 def tcl_h_btwn_subj_avg(tcl_h_data):
-    tcl_h_data_bsa = []
-    for (sub, strat, c, ll, pr), dat in tqdm(tcl_h_data.groupby(['subject', 'strategy', 'condition', 'l_length', 'pres_rate'])):
-        tcl_h_data_bsa.append((sub, strat, c, ll, pr, np.mean(dat.tcl_h1), np.mean(dat.tcl_h2), np.mean(dat.tcl_delta)))
-        
-    # store results in dataframe
-    tcl_h_data_bsa = pd.DataFrame(tcl_h_data_bsa, columns=['subject', 'strategy', 'condition', 'l_length', 'pres_rate', 'tcl_h1', 'tcl_h2', 'tcl_delta'])
+    tcl_h_data_bsa = tcl_h_data.groupby(['subject', 'strategy', 'condition', 'l_length', 'pres_rate'])[['tcl_h1', 'tcl_h2', 'tcl_delta']].mean().reset_index()
     
     # sort by condition
     tcl_h_data_bsa = sort_by_condition(tcl_h_data_bsa)
@@ -1100,12 +1007,12 @@ def lag_crp_sess(data, ll, buffer):
         
         for exOut in excludeOutputs:
             try:
-                sps_left.remove(exOut)               # remove first outputs from possible transitions
+                sps_left.remove(exOut)                # remove first outputs from possible transitions
             except:
                 pass                                  # item already removed or intrusion
         
         for j in range(len(sp) - 1):
-            if sp[j]!=88 and sp[j]!=77:             # correct recall
+            if sp[j]!=88 and sp[j]!=77:               # correct recall
                 sps_left.remove(sp[j])                # can't transition to already recalled serial position
                 
                 if sp[j+1]!=88 and sp[j+1]!=77:       # transition between correct recalls
@@ -1137,14 +1044,7 @@ def lag_crp(df, condition_map, buffer):
     return lcrp_data
 
 def lag_crp_btwn_subj_avg(lcrp_data):
-    lcrp_data_bsa = []
-    for (sub, strat, c, ll, pr), dat in tqdm(lcrp_data.groupby(['subject', 'strategy', 'condition', 'l_length', 'pres_rate'])):
-        lcrp = dat.iloc[:, 6:].mean(axis=0).to_numpy()
-        lcrp_data_bsa.append((sub, strat, c, ll, pr,) + tuple(lcrp))
-        
-    # store results in dataframe
-    cols = ['subject', 'strategy', 'condition', 'l_length', 'pres_rate'] + [f'ln_{x}' for x in np.arange(39, 0, -1)] + [f'lp_{x}' for x in range(1, 40)]
-    lcrp_data_bsa = pd.DataFrame(lcrp_data_bsa, columns=cols)
+    lcrp_data_bsa = lcrp_data.groupby(['subject', 'strategy', 'condition', 'l_length', 'pres_rate'])[[f'ln_{x}' for x in range(39, 0, -1)] + [f'lp_{x}' for x in range(1, 40)]].mean().reset_index()
     
     # sort by condition
     lcrp_data_bsa = sort_by_condition(lcrp_data_bsa)
@@ -1206,19 +1106,74 @@ def lag_crp_sp(df, condition_map, buffer):
     return lcrp_sp_data
 
 def lag_crp_sp_btwn_subj_avg(lcrp_sp_data):
-    lcrp_sp_data_bsa = []
-    for (sub, strat, c, ll, pr, sp), dat in tqdm(lcrp_sp_data.groupby(['subject', 'strategy', 'condition', 'l_length', 'pres_rate', 'serial_position'])):
-        crp = dat.iloc[:, 7:].mean(axis=0).to_numpy()
-        lcrp_sp_data_bsa.append((sub, strat, c, ll, pr, sp,) + tuple(crp))
-        
-     # store results in dataframe
-    lcrp_sp_data_bsa = pd.DataFrame(lcrp_sp_data_bsa, columns=['subject', 'strategy', 'condition', 'l_length', 'pres_rate', 'serial_position'] + \
-                                                              [f'ln_{x}' for x in np.arange(39, 0, -1)] + [f'lp_{x}' for x in range(1, 40)])
+    lcrp_sp_data_bsa = lcrp_sp_data.groupby(['subject', 'strategy', 'condition', 'l_length', 'pres_rate', 'serial_position'])[[f'ln_{x}' for x in range(39, 0, -1)] + [f'lp_{x}' for x in range(1, 40)]].mean().reset_index()
 
     # sort by condition
     lcrp_sp_data_bsa = sort_by_condition(lcrp_sp_data_bsa)
 
     return lcrp_sp_data_bsa
+
+# lag +1 v. -1 asymmetry (both transitions available)
+def lag_crp_l1_sess(data, ll, buffer):
+    p1 = 0; n1 = 0                 # +1, -1 lag transition counters
+    poss = 0                       # +1, -1 lag transition available
+    rec_evs = data[data['type'] == 'REC_WORD']
+    
+    for i in data.list.unique():
+        sp = rec_evs[rec_evs['list'] == i].serial_position.to_numpy()      # current list serial positions
+        sp = sp[sp != 99]                                                  # remove last null recall
+        
+        sp = mark_repetitions(sp)
+        
+        # exclude first 'buffer' output positions
+        excludeOutputs = sp[:buffer]
+        sp = sp[buffer:]
+        sps_left = [x for x in range(1, ll+1)]        # array with remaining serial positions, subtract from
+        
+        for exOut in excludeOutputs:
+            try:
+                sps_left.remove(exOut)                # remove first outputs from possible transitions
+            except:
+                pass                                  # item already removed or intrusion
+            
+        for j in range(len(sp) - 1):
+            if sp[j]!=88 and sp[j]!=77:               # correct recall
+                sps_left.remove(sp[j])                # can't transition to already recalled serial position
+                
+                if sp[j+1]!=88 and sp[j+1]!=77:       # transition between correct recalls
+                    possList = []
+                    lag = sp[j+1] - sp[j]             # actual transition
+                    
+                    for l in sps_left:                # find all possible transitions
+                        possList.append(l - sp[j])
+                        
+                    if 1 in possList and -1 in possList:    # both +1, -1 lag transitions available
+                        poss += 1
+                        if lag == 1:
+                            p1 += 1
+                        elif lag == -1:
+                            n1 += 1
+    
+    return p1/poss, n1/poss, (p1/poss) - (n1/poss)     # we actually want the NaNs from zero division
+
+def lag_crp_l1(df, condition_map, buffer):
+    lcrp_l1_data = []
+    for (sub, strat, sess, c, ll, pr), data in tqdm(df.groupby(['worker_id', 'strategy', 'session', 'condition', 'l_length', 'pres_rate'])):
+        crp_p1, crp_n1, crp_delta = lag_crp_l1_sess(data, int(ll), buffer)
+        lcrp_l1_data.append((sub, strat, sess, condition_map.get(c), ll, pr, crp_p1, crp_n1, crp_delta))
+        
+    # store results in dataframe
+    lcrp_l1_data = pd.DataFrame(lcrp_l1_data, columns=['subject', 'strategy', 'session', 'condition', 'l_length', 'pres_rate', 'crp_p1', 'crp_n1', 'crp_delta'])
+    
+    return lcrp_l1_data
+
+def lag_crp_l1_btwn_subj_avg(lcrp_l1_data):
+    lcrp_l1_data_bsa = lcrp_l1_data.groupby(['subject', 'strategy', 'condition', 'l_length', 'pres_rate'])[['crp_p1', 'crp_n1', 'crp_delta']].mean().reset_index()
+    
+    # sort by condition
+    lcrp_l1_data_bsa = sort_by_condition(lcrp_l1_data_bsa)
+    
+    return lcrp_l1_data_bsa
 
 
 # semantic clustering score
@@ -1306,13 +1261,8 @@ def scl(df, condition_map, buffer, wordpool, w2v_scores):
     return scl_data
 
 def scl_btwn_subj_avg(scl_data):
-    scl_data_bsa = []
-    for (sub, strat, c, ll, pr), dat in tqdm(scl_data.groupby(['subject', 'strategy', 'condition', 'l_length', 'pres_rate'])):
-        scl_data_bsa.append((sub, strat, c, ll, pr, np.mean(dat.scl)))
-        
-    # store results in dataframe
-    scl_data_bsa = pd.DataFrame(scl_data_bsa, columns=['subject', 'strategy', 'condition', 'l_length', 'pres_rate', 'scl'])
-    
+    scl_data_bsa = scl_data.groupby(['subject', 'strategy', 'condition', 'l_length', 'pres_rate'])['scl'].mean().reset_index()
+
     # sort by condition
     scl_data_bsa = sort_by_condition(scl_data_bsa)
 
@@ -1355,12 +1305,7 @@ def mwr_ns(df, condition_map):
     return mwr_ns_data
 
 def mwr_ns_btwn_subj_avg(mwr_ns_data):
-    mwr_ns_data_bsa = []
-    for (sub, strat, c, ll, pr), dat in tqdm(mwr_ns_data.groupby(['subject', 'strategy', 'condition', 'l_length', 'pres_rate'])):
-        mwr_ns_data_bsa.append((sub, strat, c, ll, pr, np.mean(dat.mwr_prim), np.mean(dat.mwr_rec)))   # omits NaN even without nanmean for sessions with no data
-        
-    # store results in dataframe
-    mwr_ns_data_bsa = pd.DataFrame(mwr_ns_data_bsa, columns=['subject', 'strategy', 'condition', 'l_length', 'pres_rate', 'mwr_prim', 'mwr_rec'])
+    mwr_ns_data_bsa = mwr_ns_data.groupby(['subject', 'strategy', 'condition', 'l_length', 'pres_rate'])[['mwr_prim', 'mwr_rec']].mean().reset_index()
     
     # sort by condition
     mwr_ns_data_bsa = sort_by_condition(mwr_ns_data_bsa)
@@ -1392,12 +1337,7 @@ def rt_init_ns(rti_at_data):
     return rti_ns_data
 
 def rti_ns_btwn_subj_avg(rti_ns_data):
-    rti_ns_data_bsa = []
-    for (sub, strat, c, ll, pr), dat in tqdm(rti_ns_data.groupby(['subject', 'strategy', 'condition', 'l_length', 'pres_rate'])):
-        rti_ns_data_bsa.append((sub, strat, c, ll, pr, np.mean(dat.rt_prim), np.mean(dat.rt_rec)))
-        
-    # store results in dataframe
-    rti_ns_data_bsa = pd.DataFrame(rti_ns_data_bsa, columns=['subject', 'strategy', 'condition', 'l_length', 'pres_rate', 'rt_prim', 'rt_rec'])
+    rti_ns_data_bsa = rti_ns_data.groupby(['subject', 'strategy', 'condition', 'l_length', 'pres_rate'])[['rt_prim', 'rt_rec']].mean().reset_index()
     
     # sort by condition
     rti_ns_data_bsa = sort_by_condition(rti_ns_data_bsa)
@@ -1464,13 +1404,8 @@ def tcl_ns(df, condition_map):
     return tcl_ns_data
 
 def tcl_ns_btwn_subj_avg(tcl_ns_data):
-    tcl_ns_data_bsa = []
-    for (sub, strat, c, ll, pr), dat in tqdm(tcl_ns_data.groupby(['subject', 'strategy', 'condition', 'l_length', 'pres_rate'])):
-        tcl_ns_data_bsa.append((sub, strat, c, ll, pr, np.mean(dat.tcl_prim), np.mean(dat.tcl_rec)))
-        
-    # store results in dataframe
-    tcl_ns_data_bsa = pd.DataFrame(tcl_ns_data_bsa, columns=['subject', 'strategy', 'condition', 'l_length', 'pres_rate', 'tcl_prim', 'tcl_rec'])
-    
+    tcl_ns_data_bsa = tcl_ns_data.groupby(['subject', 'strategy', 'condition', 'l_length', 'pres_rate'])[['tcl_prim', 'tcl_rec']].mean().reset_index()
+
     # sort by condition
     tcl_ns_data_bsa = sort_by_condition(tcl_ns_data_bsa)
 
