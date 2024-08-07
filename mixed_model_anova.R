@@ -15,6 +15,7 @@ run_ns_anova <- function(ns_data_bsa, dv) {
   model <- anova_test(data=ns_data_bsa, formula=formula, wid=subject,
                       between=c(l_length, pres_rate), within=(r1_label), type=3)
   res_anova <- get_anova_table(model)
+  
   return (res_anova)
 }
 

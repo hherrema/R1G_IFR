@@ -17,6 +17,9 @@ run_anova <- function(data_bsa, dv) {
   model <- lm(formula, data=data_bsa)
   res_anova <- Anova(model, type='III')
   
+  # calculate mean squared errors
+  res_anova$mse <- res_anova$`Sum Sq` / res_anova$Df
+  
   return (list(res_anova=res_anova, model=model))
 }
 
@@ -88,6 +91,7 @@ if (!is.null(rti_tukey_s)) {
   write.csv(as.data.frame(summary(rti_tukey_s)), 'statistics/dataframes/rti_tukey_s.csv',
             row.names=FALSE)
 }
+
 
 # ELI and PLI rates
 intr_data_only_cr_bsa <- read.csv('analyses/dataframes/intr_data_only_cr_bsa.csv')
@@ -163,6 +167,19 @@ write.csv(lcrp_n1_anova, 'statistics/dataframes/lcrp_n1_anova.csv')
 lcrp_n1_tukey_s <- post_hoc_pairwise(lcrp_n1_anova, lcrp_n1_model)
 if (!is.null(lcrp_n1_tukey_s)) {
   write.csv(as.data.frame(summary(lcrp_n1_tukey_s)), 'statistics/dataframes/lcrp_n1_tukey_s.csv',
+            row.names=FALSE)
+}
+
+# asymmetry (+1 v. -1, both available)
+lcrp_l1_data_bsa <- read.csv('analyses/dataframes/lcrp_l1_data_bsa.csv')
+lcrp_l1_res <- run_anova(lcrp_l1_data_bsa, 'crp_delta')
+lcrp_l1_anova <- lcrp_l1_res$res_anova
+lcrp_l1_model <- lcrp_l1_res$model
+write.csv(lcrp_l1_anova, 'statistics/dataframes/lcrp_l1_anova.csv')
+
+lcrp_l1_tukey_s <- post_hoc_pairwise(lcrp_l1_anova, lcrp_l1_model)
+if (!is.null(lcrp_l1_tukey_s)) {
+  write.csv(as.data.frame(summary(lcrp_l1_tukey_s)), 'statistics/dataframes/lcrp_l1_tukey_s.csv',
             row.names=FALSE)
 }
 

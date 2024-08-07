@@ -7,6 +7,37 @@ import numpy as np
 import scipy.stats
 
 
+# ---------- Utility ----------
+
+# sort dataframe by condition
+# list length and presentation rate or total time
+def sort_by_condition(df, style='ll_pr'):
+    if style=='total_time':
+        conds = ['10-2', '20-1', '15-2', '30-1', '20-2', '40-1']
+    elif style=='ll_pr':
+        conds = ['10-2', '15-2', '20-2', '20-1', '30-1', '40-1']
+    else:
+        raise ValueError(f"Invalid category sort style: {style}.")
+        
+    df['condition'] = pd.Categorical(df['condition'], categories = conds)
+    df = df.sort_values(by='condition', ignore_index=True)
+    
+    return df
+
+
+# sort by condition and strategy
+def sort_by_condition_strategy(df):
+    strats = ['prim', 'ns', 'rec']
+    conds_ll_pr = ['10-2', '15-2', '20-2', '20-1', '30-1', '40-1']
+    df['condition'] = pd.Categorical(df['condition'], categories = conds_ll_pr)
+    df['strategy'] = pd.Categorical(df['strategy'], categories = strats)
+    df = df.sort_values(by=['condition', 'strategy'], ignore_index=True)
+    
+    return df
+
+
+# ---------- Hypothesis Testing ----------
+
 # primacy and recency effect
 # 1-sample t-test against mean of 0
 def prim_rec_slopes_statistics(spc_prim_rec_lr_all):
@@ -28,6 +59,9 @@ def prim_rec_slopes_statistics(spc_prim_rec_lr_all):
     stats['prim_p_val_fdr'] = fdr_prim
     stats['rec_p_val_fdr'] = fdr_rec
     
+    # sort by condition
+    stats = sort_by_condition(stats, style='ll_pr')
+    
     return stats
 
 
@@ -45,6 +79,9 @@ def prim_rec_pfr_statistics(prim_rec_pfr):
     fdr_pvals = scipy.stats.false_discovery_control(stats.p_val, method='by')
     stats['p_val_fdr'] = fdr_pvals
     
+    # sort by condition
+    stats = sort_by_condition(stats, style='ll_pr')
+    
     return stats
 
 
@@ -55,6 +92,9 @@ def pfr_spc_correlation_statistics(pfr_spc_corrs):
     # FDR correction (all comparisons)
     fdr_pvals = scipy.stats.false_discovery_control(pfr_spc_corrs.p_value, method='by')
     stats['p_val_fdr'] = fdr_pvals
+    
+    # sort by condition
+    stats = sort_by_condition(stats, style='total_time')
     
     return stats
 
@@ -73,6 +113,9 @@ def r1_variance_statistics(r1_var_data_bsa):
     fdr_pvals = scipy.stats.false_discovery_control(stats.p_val, method='by')
     stats['p_val_fdr'] = fdr_pvals
     
+    # sort by condition
+    stats = sort_by_condition(stats, style='ll_pr')
+    
     return stats
 
 
@@ -90,6 +133,9 @@ def r1_sp_statistics(r1_sp_dec_data_bsa):
     fdr_pvals = scipy.stats.false_discovery_control(stats.p_val, method='by')
     stats['p_val_fdr'] = fdr_pvals
     
+    # sort by condition
+    stats = sort_by_condition(stats, style='ll_pr')
+    
     return stats
 
 # semantic clustering score
@@ -105,5 +151,8 @@ def scl_statistics(scl_data_bsa):
     # FDR correction
     fdr_pvals = scipy.stats.false_discovery_control(stats.p_val, method='by')
     stats['p_val_fdr'] = fdr_pvals
+    
+    # sort by condition and strategy
+    stats = sort_by_condition_strategy(stats)
     
     return stats

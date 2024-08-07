@@ -372,11 +372,5 @@ events_df = spellcheck_DL(events_df)
 # exclusion criteria
 events_df = gdp(events_df)
 
-# map worker IDs to conditions
-wc_dict = {c: list(events_df[events_df.condition == c].worker_id.unique()) for c in events_df.condition.unique()}
-
 # save out events dataframe, condition-worker dictionary
 events_df.to_csv(f'data_storage/events_df_{sess}.csv', index=False)
-
-with open(f'data_storage/wc_dict_{sess}.json', 'w') as f:
-    json.dump(wc_dict, f)
